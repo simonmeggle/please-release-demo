@@ -1,0 +1,42 @@
+name: build-and-attach-on-release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}   # manuell startbar als Fallback
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the tag of this release
+        uses: actions/checkout@v4
+        with:
+          # Beim release-Event steht der Tagnamen hier:
+          ref: ${{ github.event.release.tag_name || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Show context (debug)
+        run: |
+          echo "Release tag: ${{ github.event.release.tag_name }}"
+          echo "Run ref:     ${{ github.ref }}"
+          echo "Repo:        ${{ github.repository }}"
+
+      - name: Build fake artifact
+        run: |
+          mkdir -p dist
+          echo "Hello from version ${{ github.event.release.tag_name }}" > dist/hello.txt
+          tar -czf dist/fake-package-${{ github.event.release.tag_name }}.tar.gz dist/hello.txt
+          ls -l dist
+
+      - name: Attach artifact to this release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/hello.txt
+            dist/fake-package-${{ github.event.release.tag_name }}.tar.gz
+          # Der Release-Event liefert den Tagnamen:
+          tag_name: ${{ github.event.release.tag_name }}
